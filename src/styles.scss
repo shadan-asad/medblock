@@ -1,6 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
 @use 'bootstrap/scss/bootstrap' as *;
-@import 'bootstrap-icons/font/bootstrap-icons.css';
 
 /* Custom styles */
 :root {
@@ -12,9 +11,6 @@
 body {
   background-color: var(--background-color);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
 .container {

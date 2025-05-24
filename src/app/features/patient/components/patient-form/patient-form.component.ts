@@ -1,205 +1,190 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
-import { PatientService } from '../../services/patient.service';
-import { Patient } from '../../../../shared/models/patient.model';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { Router } from '@angular/router';
+import { DatabaseService } from '../../../../core/services/database.service';
+import { Patient } from '../../models/patient.model';
 
 @Component({
   selector: 'app-patient-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  template: `
-    <div class="container mt-4">
-      <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="mb-0">Patient Registration</h2>
-            </div>
-            <div class="card-body">
-              <form [formGroup]="patientForm" (ngSubmit)="onSubmit()">
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="firstName" class="form-label">First Name</label>
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="firstName"
-                      formControlName="firstName"
-                      [ngClass]="{'is-invalid': submitted && f['firstName'].errors}"
-                      [disabled]="isSubmitting"
-                    >
-                    <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
-                      <div *ngIf="f['firstName'].errors['required']">First name is required</div>
-                    </div>
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="lastName" class="form-label">Last Name</label>
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="lastName"
-                      formControlName="lastName"
-                      [ngClass]="{'is-invalid': submitted && f['lastName'].errors}"
-                      [disabled]="isSubmitting"
-                    >
-                    <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
-                      <div *ngIf="f['lastName'].errors['required']">Last name is required</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="mb-3">
-                  <label for="dateOfBirth" class="form-label">Date of Birth</label>
-                  <input
-                    type="date"
-                    class="form-control"
-                    id="dateOfBirth"
-                    formControlName="dateOfBirth"
-                    [ngClass]="{'is-invalid': submitted && f['dateOfBirth'].errors}"
-                    [disabled]="isSubmitting"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['dateOfBirth'].errors">
-                    <div *ngIf="f['dateOfBirth'].errors['required']">Date of birth is required</div>
-                  </div>
-                </div>
-
-                <div class="mb-3">
-                  <label for="email" class="form-label">Email</label>
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="email"
-                    formControlName="email"
-                    [ngClass]="{'is-invalid': submitted && f['email'].errors}"
-                    [disabled]="isSubmitting"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
-                    <div *ngIf="f['email'].errors['email']">Please enter a valid email address</div>
-                  </div>
-                </div>
-
-                <div class="mb-3">
-                  <label for="phone" class="form-label">Phone</label>
-                  <input
-                    type="tel"
-                    class="form-control"
-                    id="phone"
-                    formControlName="phone"
-                    [ngClass]="{'is-invalid': submitted && f['phone'].errors}"
-                    [disabled]="isSubmitting"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
-                    <div *ngIf="f['phone'].errors['pattern']">Please enter a valid phone number</div>
-                  </div>
-                </div>
-
-                <div class="mb-3">
-                  <label for="address" class="form-label">Address</label>
-                  <textarea
-                    class="form-control"
-                    id="address"
-                    rows="3"
-                    formControlName="address"
-                    [disabled]="isSubmitting"
-                  ></textarea>
-                </div>
-
-                <div class="mb-3">
-                  <label for="medicalHistory" class="form-label">Medical History</label>
-                  <textarea
-                    class="form-control"
-                    id="medicalHistory"
-                    rows="4"
-                    formControlName="medicalHistory"
-                    [disabled]="isSubmitting"
-                  ></textarea>
-                </div>
-
-                <div class="d-grid gap-2">
-                  <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
-                    <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {{ isSubmitting ? 'Registering...' : 'Register Patient' }}
-                  </button>
-                  <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="isSubmitting">Cancel</button>
-                </div>
-
-                <div *ngIf="errorMessage" class="alert alert-danger mt-3">
-                  {{ errorMessage }}
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .card {
-      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
-    .card-header {
-      background-color: #f8f9fa;
-      border-bottom: 1px solid #dee2e6;
-    }
-  `]
+  imports: [CommonModule, ReactiveFormsModule],
+  templateUrl: './patient-form.component.html',
+  styleUrls: ['./patient-form.component.scss']
 })
 export class PatientFormComponent implements OnInit {
-  patientForm!: FormGroup;
-  submitted = false;
-  isSubmitting = false;
-  errorMessage = '';
+  patientForm: FormGroup;
+  loading = false;
+  successMsg = '';
+  errorMsg = '';
 
   constructor(
-    private formBuilder: FormBuilder,
-    private patientService: PatientService,
+    private fb: FormBuilder,
+    private dbService: DatabaseService,
     private router: Router
-  ) {}
-
-  ngOnInit() {
-    this.patientForm = this.formBuilder.group({
-      firstName: ['', Validators.required],
-      lastName: ['', Validators.required],
-      dateOfBirth: ['', Validators.required],
-      email: ['', [Validators.email]],
-      phone: ['', [Validators.pattern('^[0-9-+() ]*$')]],
-      address: [''],
-      medicalHistory: ['']
+  ) {
+    this.patientForm = this.fb.group({
+      firstName: ['', [
+        Validators.required,
+        Validators.minLength(2),
+        Validators.maxLength(50),
+        this.noSpecialCharactersValidator(),
+        this.noNumbersValidator()
+      ]],
+      lastName: ['', [
+        Validators.required,
+        Validators.minLength(2),
+        Validators.maxLength(50),
+        this.noSpecialCharactersValidator(),
+        this.noNumbersValidator()
+      ]],
+      dateOfBirth: ['', [
+        Validators.required,
+        this.dateOfBirthValidator()
+      ]],
+      email: ['', [
+        Validators.required,
+        Validators.email,
+        Validators.maxLength(100),
+        this.emailFormatValidator()
+      ]],
+      phone: ['', [
+        Validators.required,
+        Validators.pattern('^[0-9]{10}$'),
+        this.phoneFormatValidator()
+      ]],
+      address: ['', [
+        Validators.required,
+        Validators.minLength(5),
+        Validators.maxLength(200)
+      ]],
+      medicalHistory: ['', [
+        Validators.maxLength(1000)
+      ]]
     });
   }
 
-  // convenience getter for easy access to form fields
-  get f() { return this.patientForm.controls; }
-
-  async onSubmit() {
-    this.submitted = true;
-    this.errorMessage = '';
-
-    if (this.patientForm.invalid) {
-      return;
-    }
-
-    this.isSubmitting = true;
-
-    try {
-      const patient: Patient = {
-        ...this.patientForm.value,
-        dateOfBirth: new Date(this.patientForm.value.dateOfBirth)
-      };
-
-      await this.patientService.createPatient(patient);
-      this.router.navigate(['/patients']);
-    } catch (error) {
-      console.error('Error creating patient:', error);
-      this.errorMessage = 'Failed to register patient. Please try again.';
-    } finally {
-      this.isSubmitting = false;
-    }
+  // Custom validators
+  private noSpecialCharactersValidator(): (control: AbstractControl) => ValidationErrors | null {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+      
+      const hasSpecialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(value);
+      return hasSpecialChars ? { specialCharacters: true } : null;
+    };
   }
 
-  onCancel() {
-    this.router.navigate(['/patients']);
+  private noNumbersValidator(): (control: AbstractControl) => ValidationErrors | null {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+      
+      const hasNumbers = /[0-9]/.test(value);
+      return hasNumbers ? { numbersNotAllowed: true } : null;
+    };
+  }
+
+  private dateOfBirthValidator(): (control: AbstractControl) => ValidationErrors | null {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      const date = new Date(value);
+      const today = new Date();
+      const minDate = new Date();
+      minDate.setFullYear(today.getFullYear() - 120); // Maximum age of 120 years
+
+      if (date > today) {
+        return { futureDate: true };
+      }
+      if (date < minDate) {
+        return { tooOld: true };
+      }
+      return null;
+    };
+  }
+
+  private emailFormatValidator(): (control: AbstractControl) => ValidationErrors | null {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      return emailRegex.test(value) ? null : { invalidEmailFormat: true };
+    };
+  }
+
+  private phoneFormatValidator(): (control: AbstractControl) => ValidationErrors | null {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      // Remove any non-digit characters for validation
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length !== 10) {
+        return { invalidPhoneLength: true };
+      }
+      return null;
+    };
+  }
+
+  // Getter for easy access to form fields in template
+  get f() { return this.patientForm.controls; }
+
+  ngOnInit(): void {
+    // Subscribe to form value changes for debugging
+    this.patientForm.valueChanges.subscribe(value => {
+      console.log('Form values:', value);
+    });
+
+    // Subscribe to form status changes for debugging
+    this.patientForm.statusChanges.subscribe(status => {
+      console.log('Form status:', status);
+      if (status === 'INVALID') {
+        console.log('Form errors:', this.patientForm.errors);
+        Object.keys(this.patientForm.controls).forEach(key => {
+          const control = this.patientForm.get(key);
+          if (control?.errors) {
+            console.log(`${key} errors:`, control.errors);
+          }
+        });
+      }
+    });
+  }
+
+  onSubmit(): void {
+    if (this.patientForm.valid) {
+      this.loading = true;
+      this.errorMsg = '';
+      this.successMsg = '';
+
+      const patient: Patient = {
+        ...this.patientForm.value,
+        createdAt: new Date().toISOString()
+      };
+
+      this.dbService.addPatient(patient)
+        .then(() => {
+          this.successMsg = 'Patient registered successfully!';
+          this.patientForm.reset();
+          setTimeout(() => {
+            this.router.navigate(['/patients']);
+          }, 2000);
+        })
+        .catch((error: Error) => {
+          console.error('Error registering patient:', error);
+          this.errorMsg = 'Error registering patient. Please try again.';
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    } else {
+      // Mark all fields as touched to trigger validation messages
+      Object.keys(this.patientForm.controls).forEach(key => {
+        const control = this.patientForm.get(key);
+        control?.markAsTouched();
+      });
+    }
   }
 }

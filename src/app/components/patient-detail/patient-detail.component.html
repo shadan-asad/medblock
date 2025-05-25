@@ -1,0 +1,59 @@
+<div class="container">
+  @if (loading) {
+    <div class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  } @else if (patient) {
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2>Patient Details</h2>
+        <div>
+          <button class="btn btn-secondary me-2" routerLink="/patients">Back to List</button>
+          <button class="btn btn-primary" (click)="editPatient()">Edit</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h4>Personal Information</h4>
+            <table class="table">
+              <tr>
+                <th>Name:</th>
+                <td>{{ patient.name }}</td>
+              </tr>
+              <tr>
+                <th>Age:</th>
+                <td>{{ patient.age }}</td>
+              </tr>
+              <tr>
+                <th>Gender:</th>
+                <td>{{ patient.gender }}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="row mt-4">
+          <div class="col-12">
+            <h4>Medical Information</h4>
+            <table class="table">
+              <tr>
+                <th>Diagnosis:</th>
+                <td>{{ patient.diagnosis }}</td>
+              </tr>
+              <tr>
+                <th>Admission Date:</th>
+                <td>{{ patient.admissionDate }}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="alert alert-warning">
+      Patient not found
+    </div>
+  }
+</div> 

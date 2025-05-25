@@ -73,6 +73,9 @@
             },
             "development": {
               "buildTarget": "temp-medblock:build:development"
+            },
+            "serve-pglite": {
+              "buildTarget": "temp-medblock:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -93,7 +96,8 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              }
+              },
+              "src/assets"
             ],
             "styles": [
               "src/styles.scss"

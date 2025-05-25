@@ -3,74 +3,58 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Patient } from '../../models/patient.model';
 import { PatientService } from '../../services/patient.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-patient-list',
   standalone: true,
   imports: [CommonModule, RouterModule],
-  template: `
-    <div class="container">
-      <h2 class="mb-4">Patient List</h2>
-      <div class="table-responsive">
-        <table class="table table-striped table-hover">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Date of Birth</th>
-              <th>Gender</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Last Visit</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (patient of patients; track patient.id) {
-              <tr>
-                <td>{{ patient.id }}</td>
-                <td>{{ patient.firstName }} {{ patient.lastName }}</td>
-                <td>{{ patient.dateOfBirth }}</td>
-                <td>{{ patient.gender }}</td>
-                <td>{{ patient.email }}</td>
-                <td>{{ patient.phone }}</td>
-                <td>{{ patient.lastVisit }}</td>
-                <td>
-                  <div class="btn-group" role="group">
-                    <a [routerLink]="['/patients', patient.id]" class="btn btn-primary btn-sm">View</a>
-                    <button class="btn btn-danger btn-sm ms-2" (click)="deletePatient(patient.id)">Delete</button>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .container {
-      padding: 20px;
-    }
-    .table th {
-      background-color: #f8f9fa;
-    }
-  `]
+  templateUrl: './patient-list.component.html',
+  styleUrls: ['./patient-list.component.scss']
 })
 export class PatientListComponent implements OnInit {
   patients: Patient[] = [];
+  loading = true;
+  private patientsSubscription: Subscription | undefined;
 
   constructor(private patientService: PatientService) {}
 
   ngOnInit(): void {
-    this.patientService.getPatients().subscribe(patients => {
-      this.patients = patients;
+    console.log('PatientListComponent: ngOnInit called.');
+    this.patientsSubscription = this.patientService.getPatients().subscribe({
+      next: (patients) => {
+        console.log('PatientListComponent: Received patients data:', patients);
+        this.patients = patients;
+        this.loading = false;
+        console.log('PatientListComponent: Patients array updated.', this.patients);
+      },
+      error: (error) => {
+        console.error('PatientListComponent: Error loading patients:', error);
+        this.loading = false;
+      }
     });
+    console.log('PatientListComponent: Subscribed to getPatients().');
+  }
+  
+  ngOnDestroy(): void {
+     console.log('PatientListComponent: ngOnDestroy called. Unsubscribing...');
+     if (this.patientsSubscription) {
+       this.patientsSubscription.unsubscribe();
+       console.log('PatientListComponent: Unsubscribed from patientsSubject.');
+     }
   }
 
-  deletePatient(id: number): void {
+  async deletePatient(id: number): Promise<void> {
+    console.log(`PatientListComponent: deletePatient(${id}) called.`);
     if (confirm('Are you sure you want to delete this patient?')) {
-      this.patientService.deletePatient(id);
+      try {
+        console.log(`PatientListComponent: Confirmed deletion of patient with id ${id}. Calling service.`);
+        await this.patientService.deletePatient(id);
+        console.log(`PatientListComponent: Patient with id ${id} deleted.`);
+      } catch (error) {
+        console.error(`PatientListComponent: Error deleting patient with id ${id}:`, error);
+        alert('Failed to delete patient. Please try again.');
+      }
     }
   }
 } 

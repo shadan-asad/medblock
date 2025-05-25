@@ -1,12 +1,11 @@
 export interface Patient {
   id: number;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: 'Male' | 'Female' | 'Other';
-  email: string;
-  phone: string;
-  address: string;
-  medicalHistory: string;
-  lastVisit: string;
+  name: string;
+  age: number;
+  gender: string;
+  diagnosis?: string;
+  admissionDate: string;
+  dischargeDate?: string;
+  roomNumber?: string;
+  status: string;
 } 

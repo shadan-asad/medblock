@@ -362,4 +362,20 @@ export class DatabaseService {
       throw error;
     }
   }
+
+  // Public method to execute raw SQL queries
+  async executeRawQuery(sql: string): Promise<any> {
+    await this.initializationPromise; // Wait for initialization
+    if (!this.db) throw new Error('Database not initialized after waiting');
+
+    console.log('DatabaseService: Executing raw query:', sql);
+    try {
+      const result = await this.db.query(sql);
+      console.log('DatabaseService: Raw query result:', result);
+      return result;
+    } catch (error) {
+      console.error('DatabaseService: Error executing raw query:', error);
+      throw error; // Re-throw to be caught by component
+    }
+  }
 }

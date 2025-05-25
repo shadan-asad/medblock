@@ -1,0 +1,130 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# Node
+/node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Additional Angular specific
+*.log
+*.pid
+*.seed
+*.pid.lock
+*.tsbuildinfo
+.angular/
+.angular/cache/
+.angular/cache-*
+.angular/cache-*/
+
+# Build artifacts
+/browser
+/server
+/client
+/dist-server
+/dist-browser
+
+# Test coverage
+/coverage/
+/cypress/videos/
+/cypress/screenshots/
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# Local Netlify folder
+.netlify
+
+# Production build files
+/build
+/dist-server
+/dist-browser
+
+# Backup files
+*.bak
+*.backup
+*_backup
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.editorconfig
+.vscode/*

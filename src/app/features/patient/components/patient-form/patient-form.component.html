@@ -3,12 +3,11 @@
     <div class="card-body">
       <h3 class="card-title mb-4">{{ isEditMode ? 'Edit Patient' : 'Register New Patient' }}</h3>
 
-      <!-- Loading State -->
-      <div *ngIf="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
+      <!-- Loading Spinner -->
+      <app-loading-spinner *ngIf="loading" 
+                           [message]="isEditMode ? 'Saving patient details...' : 'Registering patient...'"
+                           [overlay]="true">
+      </app-loading-spinner>
 
       <!-- Error Message -->
       <div *ngIf="errorMsg" class="alert alert-danger" role="alert">

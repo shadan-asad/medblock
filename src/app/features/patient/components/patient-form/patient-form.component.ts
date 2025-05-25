@@ -4,11 +4,12 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractContro
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { Patient } from '../../models/patient.model';
+import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-patient-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, LoadingSpinnerComponent],
   templateUrl: './patient-form.component.html',
   styleUrls: ['./patient-form.component.scss']
 })
@@ -246,16 +247,18 @@ export class PatientFormComponent implements OnInit {
             this.originalFormValue = { ...this.patientForm.value };
             this.formChanged = false;
           }
+          // Keep loading state active during navigation
           setTimeout(() => {
-            this.router.navigate(['/patients']);
-          }, 2000);
+            this.router.navigate(['/patients']).then(() => {
+              // Only set loading to false after navigation is complete
+              this.loading = false;
+            });
+          }, 1000); // Reduced timeout to 1 second for better UX
         })
         .catch((error: Error) => {
           console.error('Error saving patient:', error);
           this.errorMsg = 'Error saving patient. Please try again.';
-        })
-        .finally(() => {
-          this.loading = false;
+          this.loading = false; // Set loading to false only on error
         });
     } else {
       // Mark all fields as touched to trigger validation messages

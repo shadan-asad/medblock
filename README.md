@@ -2,6 +2,8 @@
 
 MedBlock is a simple web application for managing patient records, built with Angular 17, Bootstrap for styling, and PGlite for browser-based SQL data storage.
 
+Live URL: https://medblock-chi.vercel.app/
+
 ## Features
 
 *   Display a list of patients.

@@ -13,19 +13,27 @@ export class PatientService {
     return this.databaseService.getPatients();
   }
 
-  getPatientById(id: number): Promise<Patient | undefined> {
+  async getPatientById(id: number): Promise<Patient | null> {
     return this.databaseService.getPatientById(id);
   }
 
-  addPatient(patient: Omit<Patient, 'id'>): Promise<void> {
+  async addPatient(patient: Omit<Patient, 'id'>): Promise<Patient> {
+    // Check for duplicate email before adding
+    if (patient.email) {
+      const emailExists = await this.databaseService.checkEmailExists(patient.email);
+      if (emailExists) {
+        throw new Error(`Email '${patient.email}' already exists.`);
+      }
+    }
+    
     return this.databaseService.addPatient(patient);
   }
 
-  updatePatient(patient: Patient): Promise<void> {
-    return this.databaseService.updatePatient(patient);
+  async updatePatient(id: number, patient: Omit<Patient, 'id'>): Promise<Patient> {
+    return this.databaseService.updatePatient(id, patient);
   }
 
-  deletePatient(id: number): Promise<void> {
+  async deletePatient(id: number): Promise<void> {
     return this.databaseService.deletePatient(id);
   }
 } 

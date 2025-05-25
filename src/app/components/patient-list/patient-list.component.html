@@ -1,5 +1,6 @@
 <div class="container">
   <h2 class="mb-4">Patient List</h2>
+  <button class="btn btn-success mb-3" routerLink="/patients/add">Add Patient</button>
   @if (loading) {
     <div class="text-center">
       <div class="spinner-border" role="status">
@@ -13,8 +14,9 @@
           <tr>
             <th>ID</th>
             <th>Name</th>
-            <th>Age</th>
             <th>Gender</th>
+            <th>Date of Birth</th>
+            <th>Blood Type</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -23,8 +25,9 @@
             <tr>
               <td>{{ patient.id }}</td>
               <td>{{ patient.name }}</td>
-              <td>{{ patient.age }}</td>
               <td>{{ patient.gender }}</td>
+              <td>{{ patient.dateOfBirth | date:'dd/MM/yyyy' }}</td>
+              <td>{{ patient.bloodType }}</td>
               <td>
                 <div class="btn-group" role="group">
                   <a [routerLink]="['/patients', patient.id]" class="btn btn-primary btn-sm">View</a>

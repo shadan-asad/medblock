@@ -60,81 +60,136 @@ export class DatabaseService {
 
   async addPatient(patient: Patient): Promise<void> {
     await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
 
     return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
+      const transaction = this.db!.transaction(['patients'], 'readwrite');
+      const store = transaction.objectStore('patients');
 
-      const transaction = this.db.transaction(['patients', 'audit_log'], 'readwrite');
-      const patientsStore = transaction.objectStore('patients');
-      const auditStore = transaction.objectStore('audit_log');
+      const request = store.add(patient);
 
-      const patientData = {
-        ...patient,
-        createdAt: new Date()
-      };
-
-      const addRequest = patientsStore.add(patientData);
-
-      addRequest.onsuccess = (event) => {
-        const patientId = (event.target as IDBRequest).result;
-        
-        // Add audit log entry
-        const auditEntry = {
-          action: 'INSERT',
-          tableName: 'patients',
-          recordId: patientId,
-          changes: JSON.stringify(patient),
-          createdAt: new Date()
-        };
-
-        auditStore.add(auditEntry);
-      };
-
-      transaction.oncomplete = () => {
+      request.onsuccess = () => {
+        const patientId = request.result as number;
+        this.logAudit('CREATE', 'patients', patientId);
         resolve();
       };
 
-      transaction.onerror = (event) => {
+      request.onerror = (event) => {
         console.error('Error adding patient:', event);
-        reject(new Error('Failed to add patient'));
+        reject(new Error('Error adding patient'));
+      };
+    });
+  }
+
+  async updatePatient(patient: Patient): Promise<void> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
+    if (!patient.id) {
+      throw new Error('Patient ID is required for update');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['patients'], 'readwrite');
+      const store = transaction.objectStore('patients');
+
+      // First, check if the patient exists
+      const getRequest = store.get(patient.id as number);
+
+      getRequest.onsuccess = () => {
+        if (!getRequest.result) {
+          reject(new Error('Patient not found'));
+          return;
+        }
+
+        // Preserve the original createdAt date
+        const updatedPatient = {
+          ...patient,
+          createdAt: getRequest.result.createdAt
+        };
+
+        const updateRequest = store.put(updatedPatient);
+
+        updateRequest.onsuccess = () => {
+          this.logAudit('UPDATE', 'patients', patient.id!);
+          resolve();
+        };
+
+        updateRequest.onerror = (event) => {
+          console.error('Error updating patient:', event);
+          reject(new Error('Error updating patient'));
+        };
+      };
+
+      getRequest.onerror = (event) => {
+        console.error('Error checking patient:', event);
+        reject(new Error('Error checking patient'));
+      };
+    });
+  }
+
+  async getPatientById(id: number): Promise<Patient | null> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['patients'], 'readonly');
+      const store = transaction.objectStore('patients');
+
+      const request = store.get(id);
+
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = (event) => {
+        console.error('Error getting patient:', event);
+        reject(new Error('Error getting patient'));
       };
     });
   }
 
   async getPatients(): Promise<Patient[]> {
     await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
 
     return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-
-      const transaction = this.db.transaction(['patients'], 'readonly');
+      const transaction = this.db!.transaction(['patients'], 'readonly');
       const store = transaction.objectStore('patients');
-      const index = store.index('created_at');
-      const request = index.openCursor(null, 'prev');
+      const request = store.getAll();
 
-      const patients: Patient[] = [];
-
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          patients.push(cursor.value);
-          cursor.continue();
-        }
+      request.onsuccess = () => {
+        resolve(request.result);
       };
 
-      transaction.oncomplete = () => {
-        resolve(patients);
-      };
-
-      transaction.onerror = (event) => {
+      request.onerror = (event) => {
         console.error('Error getting patients:', event);
-        reject(new Error('Failed to get patients'));
+        reject(new Error('Error getting patients'));
+      };
+    });
+  }
+
+  private async logAudit(action: string, table: string, recordId: number): Promise<void> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
+    const auditEntry = {
+      action,
+      table,
+      recordId,
+      createdAt: new Date().toISOString()
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['audit_log'], 'readwrite');
+      const store = transaction.objectStore('audit_log');
+
+      const request = store.add(auditEntry);
+
+      request.onsuccess = () => resolve();
+      request.onerror = (event) => {
+        console.error('Error logging audit entry:', event);
+        reject(new Error('Error logging audit entry'));
       };
     });
   }

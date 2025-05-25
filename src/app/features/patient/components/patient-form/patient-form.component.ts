@@ -1,27 +1,32 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { Patient } from '../../models/patient.model';
 
 @Component({
   selector: 'app-patient-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './patient-form.component.html',
   styleUrls: ['./patient-form.component.scss']
 })
 export class PatientFormComponent implements OnInit {
   patientForm: FormGroup;
   loading = false;
-  successMsg = '';
   errorMsg = '';
+  successMsg = '';
+  isEditMode = false;
+  patientId: number | null = null;
+  originalFormValue: any = null;
+  formChanged = false;
 
   constructor(
     private fb: FormBuilder,
     private dbService: DatabaseService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.patientForm = this.fb.group({
       firstName: ['', [
@@ -61,6 +66,26 @@ export class PatientFormComponent implements OnInit {
       medicalHistory: ['', [
         Validators.maxLength(1000)
       ]]
+    });
+
+    // Subscribe to form value changes
+    this.patientForm.valueChanges.subscribe(() => {
+      if (this.isEditMode && this.originalFormValue) {
+        this.formChanged = this.hasFormChanged();
+      }
+    });
+  }
+
+  private hasFormChanged(): boolean {
+    if (!this.originalFormValue) return false;
+    
+    const currentValue = this.patientForm.value;
+    return Object.keys(this.originalFormValue).some(key => {
+      // Compare values, handling date objects
+      if (key === 'dateOfBirth') {
+        return new Date(currentValue[key]).getTime() !== new Date(this.originalFormValue[key]).getTime();
+      }
+      return currentValue[key] !== this.originalFormValue[key];
     });
   }
 
@@ -133,6 +158,15 @@ export class PatientFormComponent implements OnInit {
   get f() { return this.patientForm.controls; }
 
   ngOnInit(): void {
+    // Check if we're in edit mode
+    this.route.params.subscribe(params => {
+      if (params['id']) {
+        this.isEditMode = true;
+        this.patientId = +params['id'];
+        this.loadPatientData();
+      }
+    });
+
     // Subscribe to form value changes for debugging
     this.patientForm.valueChanges.subscribe(value => {
       console.log('Form values:', value);
@@ -153,6 +187,37 @@ export class PatientFormComponent implements OnInit {
     });
   }
 
+  private async loadPatientData(): Promise<void> {
+    try {
+      this.loading = true;
+      const patient = await this.dbService.getPatientById(this.patientId!);
+      if (patient) {
+        this.patientForm.patchValue({
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          dateOfBirth: patient.dateOfBirth,
+          email: patient.email,
+          phone: patient.phone,
+          address: patient.address,
+          medicalHistory: patient.medicalHistory
+        });
+        // Store the original form value for change detection
+        this.originalFormValue = { ...this.patientForm.value };
+        this.formChanged = false;
+      } else {
+        this.errorMsg = 'Patient not found';
+        setTimeout(() => {
+          this.router.navigate(['/patients']);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error loading patient:', error);
+      this.errorMsg = 'Error loading patient data';
+    } finally {
+      this.loading = false;
+    }
+  }
+
   onSubmit(): void {
     if (this.patientForm.valid) {
       this.loading = true;
@@ -161,20 +226,33 @@ export class PatientFormComponent implements OnInit {
 
       const patient: Patient = {
         ...this.patientForm.value,
+        id: this.patientId,
         createdAt: new Date().toISOString()
       };
 
-      this.dbService.addPatient(patient)
+      const operation = this.isEditMode
+        ? this.dbService.updatePatient(patient)
+        : this.dbService.addPatient(patient);
+
+      operation
         .then(() => {
-          this.successMsg = 'Patient registered successfully!';
-          this.patientForm.reset();
+          this.successMsg = this.isEditMode
+            ? 'Patient updated successfully!'
+            : 'Patient registered successfully!';
+          if (!this.isEditMode) {
+            this.patientForm.reset();
+          } else {
+            // Update the original form value after successful update
+            this.originalFormValue = { ...this.patientForm.value };
+            this.formChanged = false;
+          }
           setTimeout(() => {
             this.router.navigate(['/patients']);
           }, 2000);
         })
         .catch((error: Error) => {
-          console.error('Error registering patient:', error);
-          this.errorMsg = 'Error registering patient. Please try again.';
+          console.error('Error saving patient:', error);
+          this.errorMsg = 'Error saving patient. Please try again.';
         })
         .finally(() => {
           this.loading = false;

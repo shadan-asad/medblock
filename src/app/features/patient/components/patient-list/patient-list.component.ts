@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { Patient } from '../../models/patient.model';
 
@@ -21,7 +21,10 @@ export class PatientListComponent implements OnInit {
   sortField: keyof Patient = 'createdAt';
   sortDirection: 'asc' | 'desc' = 'desc';
 
-  constructor(private dbService: DatabaseService) {}
+  constructor(
+    private dbService: DatabaseService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadPatients();
@@ -58,6 +61,11 @@ export class PatientListComponent implements OnInit {
 
   onBackToSummary(): void {
     this.currentPhase = 2;
+  }
+
+  onEditPatient(patient: Patient): void {
+    // Navigate to the edit page with the patient ID
+    this.router.navigate(['/patients', patient.id, 'edit']);
   }
 
   onSearch(event: Event): void {

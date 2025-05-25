@@ -368,6 +368,13 @@ export class DatabaseService {
     await this.initializationPromise; // Wait for initialization
     if (!this.db) throw new Error('Database not initialized after waiting');
 
+    const lowerSql = sql.trim().toLowerCase();
+
+    // Allow only SELECT statements for safety on this page
+    if (!lowerSql.startsWith('select')) {
+      throw new Error('Only SELECT queries are allowed on this page.');
+    }
+
     console.log('DatabaseService: Executing raw query:', sql);
     try {
       const result = await this.db.query(sql);

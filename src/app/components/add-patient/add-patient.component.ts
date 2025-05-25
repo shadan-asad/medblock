@@ -1,9 +1,9 @@
-import { Component, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ViewChild, AfterViewInit, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule, NgForm, Validators } from '@angular/forms';
 import { PatientService } from '../../services/patient.service';
 import { Patient } from '../../models/patient.model';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-add-patient',
@@ -12,7 +12,7 @@ import { Router } from '@angular/router';
   templateUrl: './add-patient.component.html',
   styleUrls: ['./add-patient.component.scss']
 })
-export class AddPatientComponent implements AfterViewInit {
+export class AddPatientComponent implements AfterViewInit, OnInit {
   @ViewChild('patientForm') patientForm!: NgForm;
   formErrors: any = {};
   duplicateEmailError: string | null = null;
@@ -31,8 +31,10 @@ export class AddPatientComponent implements AfterViewInit {
 
   today = new Date();
   bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  isEditMode = false; // Track whether in add or edit mode
+  patientId: number | null = null; // Store patient ID in edit mode
 
-  constructor(private patientService: PatientService, private router: Router) {}
+  constructor(private patientService: PatientService, private router: Router, private route: ActivatedRoute) {}
 
   ngAfterViewInit() {
     // Use Angular's built-in form status changes
@@ -41,6 +43,40 @@ export class AddPatientComponent implements AfterViewInit {
       console.log('Form valid (patientForm.valid):', this.patientForm.valid);
       // No longer need custom checkFormValidity method subscribing to valueChanges
     });
+  }
+
+  async ngOnInit() { // Implement OnInit to fetch data on component initialization
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.isEditMode = true;
+      this.patientId = +id; // Convert string id to number
+      try {
+        const patient = await this.patientService.getPatientById(this.patientId);
+        if (patient) {
+          // Populate form with patient data
+          this.patientData = { // Omit id when populating form data
+            name: patient.name,
+            gender: patient.gender,
+            dateOfBirth: patient.dateOfBirth, // Assuming dateOfBirth is in 'yyyy-MM-dd' format
+            bloodType: patient.bloodType,
+            email: patient.email,
+            phone: patient.phone,
+            address: patient.address,
+            emergencyContact: patient.emergencyContact
+          };
+        } else {
+          console.error('Patient not found for editing:', this.patientId);
+          // Optionally navigate back to list or show an error
+          this.router.navigate(['/patients']);
+        }
+      } catch (error) {
+        console.error('Error fetching patient for editing:', error);
+        // Optionally show an error message
+      }
+    }
+
+    // Call checkFormValidity initially to set the button state
+    // this.checkFormValidity(); // Removed as we rely on form.statusChanges
   }
 
   onDateOfBirthChange() {
@@ -96,8 +132,15 @@ export class AddPatientComponent implements AfterViewInit {
     }
 
     try {
-      await this.patientService.addPatient(this.patientData);
-      console.log('Patient added successfully');
+      if (this.isEditMode && this.patientId !== null) {
+        // Call updatePatient in edit mode
+        await this.patientService.updatePatient(this.patientId, this.patientData);
+        console.log('Patient updated successfully');
+      } else {
+        // Call addPatient in add mode
+        await this.patientService.addPatient(this.patientData);
+        console.log('Patient added successfully');
+      }
       this.router.navigate(['/patients']);
     } catch (error: any) {
       console.error('Error adding patient:', error);

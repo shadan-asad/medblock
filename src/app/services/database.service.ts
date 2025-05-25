@@ -26,6 +26,7 @@ export class DatabaseService {
   private isInitialized = false;
   private patientsSubject = new BehaviorSubject<Patient[]>([]);
   private isBrowser: boolean;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor(
     @Inject(PLATFORM_ID) platformId: Object,
@@ -41,67 +42,76 @@ export class DatabaseService {
   }
 
   private async initializeDatabase() {
-    if (this.isInitialized) {
-      console.log('DatabaseService: Database already initialized');
-      return;
+    if (this.isInitialized || this.initializationPromise) {
+      console.log('DatabaseService: Initialization already in progress or complete');
+      return this.initializationPromise || Promise.resolve();
     }
 
-    try {
-      console.log('DatabaseService: Starting initialization...');
-      
-      // Fetch WASM and data files
-      console.log('DatabaseService: Fetching WASM and data files...');
-      const wasmResponse = await firstValueFrom(this.http.get('/pglite/pglite.wasm', { responseType: 'arraybuffer' }));
-      const dataResponse = await firstValueFrom(this.http.get('/pglite/pglite.data', { responseType: 'arraybuffer' }));
-      console.log('DatabaseService: Files fetched successfully');
-      
-      // Create Blob for data file
-      const dataBlob = new Blob([dataResponse], { type: 'application/octet-stream' });
-      
-      // Initialize PGlite with explicit dataDir
-      console.log('DatabaseService: Creating PGlite instance...');
-      this.db = new PGlite({
-        wasmModule: await WebAssembly.compile(wasmResponse),
-        fsBundle: dataBlob,
-        dataDir: 'idb://medblock-db' // Explicitly set IndexedDB storage location
-      });
-      console.log('DatabaseService: PGlite instance created');
+    console.log('DatabaseService: Setting initializationPromise');
+    this.initializationPromise = (async () => {
+      try {
+        console.log('DatabaseService: Starting initialization...');
+        
+        // Fetch WASM and data files
+        console.log('DatabaseService: Fetching WASM and data files...');
+        const wasmResponse = await firstValueFrom(this.http.get('/pglite/pglite.wasm', { responseType: 'arraybuffer' }));
+        const dataResponse = await firstValueFrom(this.http.get('/pglite/pglite.data', { responseType: 'arraybuffer' }));
+        console.log('DatabaseService: Files fetched successfully');
+        
+        // Create Blob for data file
+        const dataBlob = new Blob([dataResponse], { type: 'application/octet-stream' });
+        
+        // Initialize PGlite with explicit dataDir
+        console.log('DatabaseService: Creating PGlite instance...');
+        this.db = new PGlite({
+          wasmModule: await WebAssembly.compile(wasmResponse),
+          fsBundle: dataBlob,
+          dataDir: 'idb://medblock-db' // Explicitly set IndexedDB storage location
+        });
+        console.log('DatabaseService: PGlite instance created');
 
-      // Wait for database to be ready
-      console.log('DatabaseService: Waiting for database to be ready...');
-      await this.db.waitReady;
-      console.log('DatabaseService: Database is ready');
+        // Wait for database to be ready
+        console.log('DatabaseService: Waiting for database to be ready...');
+        await this.db.waitReady;
+        console.log('DatabaseService: Database is ready');
 
-      // Create tables if they don't exist
-      console.log('DatabaseService: Creating tables...');
-      await this.createTables();
-      
-      // Check if we need to seed the database
-      console.log('DatabaseService: Checking if database needs seeding...');
-      const result = await this.db.query('SELECT COUNT(*) as count FROM patients');
-      const count = parseInt((result.rows[0] as { count: string }).count);
-      console.log('DatabaseService: Current patient count:', count);
-      
-      if (count === 0) {
-        console.log('DatabaseService: Seeding database...');
-        await this.seedDatabase();
+        // Create tables if they don't exist
+        console.log('DatabaseService: Creating tables...');
+        await this.createTables();
+        
+        // Check if we need to seed the database
+        console.log('DatabaseService: Checking if database needs seeding...');
+        const result = await this.db.query('SELECT COUNT(*) as count FROM patients');
+        const count = parseInt((result.rows[0] as { count: string }).count);
+        console.log('DatabaseService: Current patient count:', count);
+        
+        if (count === 0) {
+          console.log('DatabaseService: Seeding database...');
+          await this.seedDatabase();
+        }
+        
+        this.isInitialized = true;
+        console.log('DatabaseService: Initialization complete');
+
+        // Load patients after initialization
+        console.log('DatabaseService: Loading initial patients...');
+        await this.loadPatients();
+        console.log('DatabaseService: Initial patients loaded');
+      } catch (error) {
+        console.error('DatabaseService: Error during initialization:', error);
+        this.initializationPromise = null;
+        throw error;
       }
-      
-      this.isInitialized = true;
-      console.log('DatabaseService: Initialization complete');
+    })();
 
-      // Load patients after initialization
-      console.log('DatabaseService: Loading initial patients...');
-      await this.loadPatients();
-      console.log('DatabaseService: Initial patients loaded');
-    } catch (error) {
-      console.error('DatabaseService: Error during initialization:', error);
-      throw error;
-    }
+    return this.initializationPromise;
   }
 
   private async createTables() {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+       await this.initializationPromise;
+       if (!this.db) throw new Error('Database not initialized after waiting');
+    }
     
     try {
       console.log('DatabaseService: Creating patients table...');
@@ -208,7 +218,8 @@ export class DatabaseService {
   }
 
   async getPatientById(id: number): Promise<Patient | null> {
-    if (!this.db) throw new Error('Database not initialized');
+    await this.initializationPromise;
+    if (!this.db) throw new Error('Database not initialized after waiting');
     
     try {
       const result = await this.db.query('SELECT * FROM patients WHERE id = $1', [id]);
@@ -233,8 +244,9 @@ export class DatabaseService {
   }
 
   async checkEmailExists(email: string | undefined): Promise<boolean> {
-    if (!this.db) throw new Error('Database not initialized');
-    if (!email) return false; // No email provided, no duplicate to check
+    await this.initializationPromise;
+    if (!this.db) throw new Error('Database not initialized after waiting');
+    if (!email) return false;
 
     try {
       console.log('DatabaseService: Checking for existing email:', email);
@@ -249,7 +261,8 @@ export class DatabaseService {
   }
 
   async addPatient(patient: Omit<Patient, 'id'>): Promise<Patient> {
-    if (!this.db) throw new Error('Database not initialized');
+    await this.initializationPromise;
+    if (!this.db) throw new Error('Database not initialized after waiting');
     
     try {
       const result = await this.db.query(`
@@ -291,7 +304,8 @@ export class DatabaseService {
   }
 
   async updatePatient(id: number, patient: Omit<Patient, 'id'>): Promise<Patient> {
-    if (!this.db) throw new Error('Database not initialized');
+    await this.initializationPromise;
+    if (!this.db) throw new Error('Database not initialized after waiting');
     
     try {
       const result = await this.db.query(`
@@ -336,7 +350,8 @@ export class DatabaseService {
   }
 
   async deletePatient(id: number): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    await this.initializationPromise;
+    if (!this.db) throw new Error('Database not initialized after waiting');
     
     try {
       await this.db.query('DELETE FROM patients WHERE id = $1', [id]);

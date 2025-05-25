@@ -48,7 +48,14 @@ export class PatientDetailComponent implements OnInit {
   }
 
   editPatient(): void {
-    // TODO: Implement edit functionality
-    alert('Edit functionality to be implemented');
+    if (this.patient) {
+      this.router.navigate(['/patients/edit', this.patient.id]);
+    }
   }
+
+  // TODO: Implement delete functionality (perhaps add a delete button here or on the list page)
+  // deletePatient(): void {
+  //   // Implementation depends on where delete action is desired
+  //   alert('Delete functionality to be implemented');
+  // }
 } 

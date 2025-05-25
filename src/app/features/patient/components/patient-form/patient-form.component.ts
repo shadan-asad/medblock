@@ -136,8 +136,23 @@ export class PatientFormComponent implements OnInit {
       const value = control.value;
       if (!value) return null;
 
+      // More comprehensive email regex pattern
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      return emailRegex.test(value) ? null : { invalidEmailFormat: true };
+      
+      // Check for common email format issues
+      if (!emailRegex.test(value)) {
+        if (!value.includes('@')) {
+          return { invalidEmailFormat: true, message: 'Email must contain @ symbol' };
+        }
+        if (!value.includes('.')) {
+          return { invalidEmailFormat: true, message: 'Email must contain a domain' };
+        }
+        if (value.split('@')[1].split('.').length < 2) {
+          return { invalidEmailFormat: true, message: 'Invalid domain format' };
+        }
+        return { invalidEmailFormat: true };
+      }
+      return null;
     };
   }
 
@@ -225,11 +240,18 @@ export class PatientFormComponent implements OnInit {
       this.errorMsg = '';
       this.successMsg = '';
 
+      // Log form values for debugging
+      console.log('Form values:', this.patientForm.value);
+
       const patient: Patient = {
         ...this.patientForm.value,
-        id: this.patientId,
         createdAt: new Date().toISOString()
       };
+
+      // Only include id if we're in edit mode
+      if (this.isEditMode && this.patientId) {
+        patient.id = this.patientId;
+      }
 
       const operation = this.isEditMode
         ? this.dbService.updatePatient(patient)
@@ -253,11 +275,11 @@ export class PatientFormComponent implements OnInit {
               // Only set loading to false after navigation is complete
               this.loading = false;
             });
-          }, 1000); // Reduced timeout to 1 second for better UX
+          }, 1000);
         })
         .catch((error: Error) => {
           console.error('Error saving patient:', error);
-          this.errorMsg = 'Error saving patient. Please try again.';
+          this.errorMsg = error.message || 'Error saving patient. Please try again.';
           this.loading = false; // Set loading to false only on error
         });
     } else {
@@ -265,6 +287,15 @@ export class PatientFormComponent implements OnInit {
       Object.keys(this.patientForm.controls).forEach(key => {
         const control = this.patientForm.get(key);
         control?.markAsTouched();
+      });
+      
+      // Log form validation errors
+      console.log('Form validation errors:', this.patientForm.errors);
+      Object.keys(this.patientForm.controls).forEach(key => {
+        const control = this.patientForm.get(key);
+        if (control?.errors) {
+          console.log(`${key} errors:`, control.errors);
+        }
       });
     }
   }

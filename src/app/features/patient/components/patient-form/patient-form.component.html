@@ -56,6 +56,12 @@
             <div class="invalid-feedback" *ngIf="patientForm.get('dateOfBirth')?.errors?.['required'] && patientForm.get('dateOfBirth')?.touched">
               Date of birth is required
             </div>
+            <div class="invalid-feedback" *ngIf="patientForm.get('dateOfBirth')?.errors?.['futureDate'] && patientForm.get('dateOfBirth')?.touched">
+              Date of birth cannot be in the future
+            </div>
+            <div class="invalid-feedback" *ngIf="patientForm.get('dateOfBirth')?.errors?.['tooOld'] && patientForm.get('dateOfBirth')?.touched">
+              Date of birth cannot be more than 120 years ago
+            </div>
           </div>
 
           <!-- Email -->
@@ -68,6 +74,12 @@
             </div>
             <div class="invalid-feedback" *ngIf="patientForm.get('email')?.errors?.['email'] && patientForm.get('email')?.touched">
               Please enter a valid email address
+            </div>
+            <div class="invalid-feedback" *ngIf="patientForm.get('email')?.errors?.['invalidEmailFormat'] && patientForm.get('email')?.touched">
+              Please enter a valid email address (e.g., example&#64;domain.com)
+            </div>
+            <div class="invalid-feedback" *ngIf="patientForm.get('email')?.errors?.['maxlength'] && patientForm.get('email')?.touched">
+              Email cannot exceed 100 characters
             </div>
           </div>
 

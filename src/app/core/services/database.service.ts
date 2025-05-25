@@ -66,17 +66,45 @@ export class DatabaseService {
       const transaction = this.db!.transaction(['patients'], 'readwrite');
       const store = transaction.objectStore('patients');
 
-      const request = store.add(patient);
+      // Remove the id field to let IndexedDB auto-generate it
+      const { id, ...patientWithoutId } = patient;
+
+      // Log the data we're trying to store
+      console.log('Attempting to store patient data:', patientWithoutId);
+
+      // Validate required fields
+      const requiredFields = ['firstName', 'lastName', 'dateOfBirth', 'email', 'phone', 'address'];
+      const missingFields = requiredFields.filter(field => !patientWithoutId[field as keyof typeof patientWithoutId]);
+      
+      if (missingFields.length > 0) {
+        reject(new Error(`Missing required fields: ${missingFields.join(', ')}`));
+        return;
+      }
+
+      const request = store.add(patientWithoutId);
 
       request.onsuccess = () => {
         const patientId = request.result as number;
+        console.log('Successfully added patient with ID:', patientId);
         this.logAudit('CREATE', 'patients', patientId);
         resolve();
       };
 
       request.onerror = (event) => {
-        console.error('Error adding patient:', event);
-        reject(new Error('Error adding patient'));
+        const error = (event.target as IDBRequest).error;
+        console.error('Error adding patient:', {
+          error,
+          errorName: error?.name,
+          errorMessage: error?.message,
+          patientData: patientWithoutId
+        });
+        
+        // Handle specific IndexedDB errors
+        if (error?.name === 'ConstraintError') {
+          reject(new Error('A patient with this email already exists'));
+        } else {
+          reject(new Error(`Error adding patient: ${error?.message || 'Unknown error'}`));
+        }
       };
     });
   }

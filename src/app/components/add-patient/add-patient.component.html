@@ -1,5 +1,5 @@
 <div class="container">
-  <h2>Add New Patient</h2>
+  <h2 class="pt-3 mb-4">Add New Patient</h2>
   <div class="card">
     <div class="card-body">
       <form #patientForm="ngForm" (ngSubmit)="onSubmit()">
@@ -121,8 +121,10 @@
             </div>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary" [disabled]="patientForm.invalid">Add Patient</button>
-        <button type="button" class="btn btn-secondary ms-2" (click)="onCancel()">Cancel</button>
+        <div class="d-flex justify-content-end mt-4">
+          <button type="submit" class="btn btn-primary" [disabled]="patientForm.invalid">Add Patient</button>
+          <button type="button" class="btn btn-secondary ms-2" (click)="onCancel()">Cancel</button>
+        </div>
       </form>
     </div>
   </div>
